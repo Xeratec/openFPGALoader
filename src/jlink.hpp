@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "jtagInterface.hpp"
+#include "cable.hpp"
 
 /*!
  * \brief Segger JLink probe driver
@@ -19,12 +20,12 @@
 class Jlink: public JtagInterface {
 	public:
 		/*!
-		 * \brief constructor: open device 
+		 * \brief constructor: open device
 		 * \param[in] clkHz: output clock frequency
 		 * \param[in] verbose: verbose level -1 quiet, 0 normal,
 		 * 								1 verbose, 2 debug
 		 */
-		Jlink(uint32_t clkHz, int8_t verbose, int vid, int pid);
+		Jlink(const cable_t &cable, uint32_t clkHz, int8_t verbose, int vid, int pid);
 
 		~Jlink();
 
@@ -48,7 +49,7 @@ class Jlink: public JtagInterface {
 
 		/*!
 		 * \brief write and read len bits with optional tms set to 1 if end
-		 * \param[in] tx: serie of tdi state to send 
+		 * \param[in] tx: serie of tdi state to send
 		 * \param[out] rx: buffer to store tdo bits from device
 		 * \param[in] len: number of bit to read/write
 		 * \param[in] end: if true tms is set to one with the last tdi bit
@@ -116,7 +117,7 @@ class Jlink: public JtagInterface {
 			EMU_CMD_READ_CONFIG        = 0xF2,
 			EMU_CMD_WRITE_CONFIG       = 0xF3
 		};
-		
+
 		// JLink hardware type
 		const std::string jlink_hw_type[4] = {
 			"J-Link",
@@ -124,7 +125,7 @@ class Jlink: public JtagInterface {
 			"Flasher",
 			"J-Link Pro"
 		};
-		
+
 		// Jlink configuration structure
 		struct jlink_cfg_t {
 			uint8_t usb_adr;
@@ -270,7 +271,7 @@ class Jlink: public JtagInterface {
 		 * \brief iterate on all USB peripheral to find one JLink
 		 * \return false when failure, unable to open or no device found
 		 */
-		bool jlink_scan_usb(int vid, int pid);
+		bool jlink_scan_usb(const cable_t &cable, int vid, int pid);
 
 		typedef struct {
 			libusb_device *usb_dev;

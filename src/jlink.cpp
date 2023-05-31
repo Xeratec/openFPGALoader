@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "display.hpp"
+#include "cable.hpp"
 
 #define VID 0x1366
 #define PID 0x0105
@@ -39,7 +40,7 @@ using namespace std;
 // buffer capacity
 #define BUF_SIZE 2048
 
-Jlink::Jlink(uint32_t clkHz, int8_t verbose, int vid = VID, int pid = PID):_base_freq(0), _min_div(0),
+Jlink::Jlink(const cable_t &cable, uint32_t clkHz, int8_t verbose, int vid = VID, int pid = PID):_base_freq(0), _min_div(0),
 	jlink_write_ep(-1), jlink_read_ep(-1), jlink_interface(-1),
 	_verbose(verbose > 0), _debug(verbose > 1), _quiet(verbose < 0),
 	_num_bits(0), _last_tms(0), _last_tdi(0),
@@ -50,7 +51,7 @@ Jlink::Jlink(uint32_t clkHz, int8_t verbose, int vid = VID, int pid = PID):_base
 		throw std::runtime_error("libusb init failed\n");
 
 	// search for all compatible devices
-	if (!jlink_scan_usb(vid,pid))
+	if (!jlink_scan_usb(cable,vid,pid))
 		throw std::runtime_error("can't find compatible device");
 
 	// get device capacity
@@ -478,7 +479,7 @@ int Jlink::get_hw_version()
 	if (_debug)
 		printf("%08x ", version);
 	if (!_quiet) {
-		printInfo("device type: " + jlink_hw_type[_hw_type] + 
+		printInfo("device type: " + jlink_hw_type[_hw_type] +
 				  " major: " + std::to_string(_major) +
 				  " minor: " + std::to_string(_minor) +
 				  " revision: " + std::to_string(_revision));
@@ -659,7 +660,7 @@ bool Jlink::jlink_search_interface(libusb_device *dev,
 	return true;
 }
 
-bool Jlink::jlink_scan_usb(int vid, int pid)
+bool Jlink::jlink_scan_usb(const cable_t &cable, int vid, int pid)
 {
 	libusb_device **dev_list;
 	libusb_device *usb_dev;
@@ -680,11 +681,21 @@ bool Jlink::jlink_scan_usb(int vid, int pid)
 		if (desc.idProduct != pid || desc.idVendor != vid)
 			continue;
 
-		if (_verbose)
-			printf("%04x:%04x (bus %d, device %2d)\n",
-				desc.idVendor, desc.idProduct,
-				libusb_get_bus_number(usb_dev),
-				libusb_get_device_address(usb_dev));
+		printf("Found Device %04x:%04x (bus %x, device %x)\n",
+			desc.idVendor, desc.idProduct,
+			libusb_get_bus_number(usb_dev),
+			libusb_get_device_address(usb_dev));
+
+		if (cable.bus_addr > 0 && cable.bus_addr != libusb_get_bus_number(usb_dev)) {
+			// printf("Requested bus %d does not match %d\n",cable.bus_addr, libusb_get_bus_number(usb_dev));
+			continue;
+
+		}
+		if (cable.device_addr > 0 && cable.device_addr != libusb_get_device_address(usb_dev)) {
+			// printf("Requested device %d does not match %d\n",cable.device_addr, libusb_get_device_address(usb_dev));
+			continue;
+		}
+
 		/* try to open device to search for interface */
 		int ret = libusb_open(usb_dev, &handle);
 		if (ret != 0)
